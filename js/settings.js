@@ -10,6 +10,7 @@ const Settings = {
     {id:'profile',  label:'Hồ sơ cá nhân',       icon:'fa-user-circle'},
     {id:'salary',   label:'Cấu hình lương',       icon:'fa-coins'},
     {id:'leave',    label:'Chính sách nghỉ phép', icon:'fa-calendar-check'},
+    {id:'template', label:'Mẫu nhập liệu',        icon:'fa-file-arrow-up'},
     {id:'notif',    label:'Thông báo',             icon:'fa-bell'},
     {id:'security', label:'Bảo mật',               icon:'fa-shield-halved'},
     {id:'backup',   label:'Sao lưu & Khôi phục',  icon:'fa-database'},
@@ -53,6 +54,7 @@ const Settings = {
       case 'profile':  c.innerHTML = this.sectionProfile();  break;
       case 'salary':   c.innerHTML = this.sectionSalary();   break;
       case 'leave':    c.innerHTML = this.sectionLeave();    break;
+      case 'template': c.innerHTML = this.sectionTemplate();  break;
       case 'notif':    c.innerHTML = this.sectionNotif();    break;
       case 'security': c.innerHTML = this.sectionSecurity(); break;
       case 'backup':   c.innerHTML = this.sectionBackup();   break;
@@ -178,6 +180,184 @@ const Settings = {
         </div>
       </div>
     </div>`; },
+
+  sectionTemplate() {
+    const fields = ImportConfig.fields;
+    const enabled = fields.filter(f => f.enabled);
+
+    return `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-file-arrow-up text-success"></i> Cấu hình mẫu nhập liệu hàng loạt</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm btn-secondary" onclick="Settings._templateReset()">
+            <i class="fa-solid fa-rotate-left"></i> Mặc định
+          </button>
+          <button class="btn btn-sm btn-success" onclick="Settings._templateSave()">
+            <i class="fa-solid fa-save"></i> Lưu mẫu
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <!-- Info -->
+        <div style="background:var(--info-light);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:var(--info);display:flex;gap:10px;align-items:flex-start">
+          <i class="fa-solid fa-circle-info" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
+          <div>
+            Cấu hình các <strong>cột dữ liệu</strong> sẽ có trong file mẫu CSV.
+            Bật/tắt từng cột, đánh dấu <strong>bắt buộc</strong>, và đặt tên cột tùy ý.
+            Khi nhập hàng loạt, hệ thống sẽ nhận diện cột theo tên này.
+          </div>
+        </div>
+
+        <!-- Field table -->
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="background:var(--bg)">
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)">Bật</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)">TRƯỜNG DỮ LIỆU</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)">TÊN CỘT TRONG FILE MẪU</th>
+                <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)">BẮT BUỘC</th>
+                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)">VÍ DỤ</th>
+              </tr>
+            </thead>
+            <tbody id="templateFieldTable">
+              ${fields.map((f, idx) => `
+                <tr id="trow_${f.id}" style="border-bottom:1px solid var(--border-light);opacity:${f.enabled?'1':'.5'}">
+                  <td style="padding:10px 14px">
+                    <label class="switch" style="margin:0">
+                      <input type="checkbox" ${f.enabled?'checked':''} id="ten_${f.id}"
+                        onchange="Settings._templateToggle('${f.id}',this.checked)" />
+                      <span class="slider"></span>
+                    </label>
+                  </td>
+                  <td style="padding:10px 14px">
+                    <div style="font-weight:600;color:var(--text-dark)">${f.label}</div>
+                    <div style="font-size:11px;color:var(--text-muted);font-family:monospace">${f.id}</div>
+                  </td>
+                  <td style="padding:10px 14px;min-width:200px">
+                    <input class="form-control" id="tlabel_${f.id}" value="${f.customLabel || f.label}"
+                      placeholder="${f.label}" style="padding:6px 10px;font-size:13px"
+                      ${f.enabled?'':'disabled'} />
+                  </td>
+                  <td style="padding:10px 14px;text-align:center">
+                    <label class="switch" style="margin:0 auto">
+                      <input type="checkbox" ${f.required?'checked':''} id="treq_${f.id}"
+                        ${f.enabled?'':'disabled'}
+                        onchange="Settings._templateSetRequired('${f.id}',this.checked)" />
+                      <span class="slider"></span>
+                    </label>
+                  </td>
+                  <td style="padding:10px 14px;font-size:12px;color:var(--text-muted);font-family:monospace">${f.example}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Preview -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+            XEM TRƯỚC FILE MẪU CSV
+          </div>
+          <div id="templatePreview" style="background:var(--bg);border-radius:8px;padding:14px 16px;font-family:monospace;font-size:12px;color:var(--text-base);overflow-x:auto;white-space:nowrap;border:1px solid var(--border)">
+            ${this._buildPreviewRow(fields)}
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+            <span style="color:var(--danger);font-weight:600">* Cột bắt buộc</span> •
+            Hàng 1: tiêu đề cột | Hàng 2: dữ liệu mẫu
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-success" onclick="Settings._downloadPreviewTemplate()">
+            <i class="fa-solid fa-download"></i> Tải file mẫu ngay
+          </button>
+          <button class="btn btn-primary" onclick="navigate('employees');setTimeout(()=>Employees.openBulkImport(),200)">
+            <i class="fa-solid fa-file-arrow-up"></i> Đi đến Nhập hàng loạt
+          </button>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  _buildPreviewRow(fields) {
+    const active = fields.filter(f => f.enabled);
+    const header = active.map(f => `<span style="color:${f.required?'var(--danger)':'var(--primary)'};font-weight:600">"${f.customLabel||f.label}"${f.required?'*':''}</span>`).join('<span style="color:var(--text-muted)">,</span>');
+    const example= active.map(f => `<span style="color:var(--success)">"${f.example}"</span>`).join('<span style="color:var(--text-muted)">,</span>');
+    return header + '<br/>' + example;
+  },
+
+  _templateToggle(id, checked) {
+    const row    = document.getElementById(`trow_${id}`);
+    const lInput = document.getElementById(`tlabel_${id}`);
+    const rInput = document.getElementById(`treq_${id}`);
+    row.style.opacity   = checked ? '1' : '.5';
+    lInput.disabled     = !checked;
+    if (rInput) rInput.disabled = !checked;
+    this._updateTemplatePreview();
+  },
+
+  _templateSetRequired(id, checked) { this._updateTemplatePreview(); },
+
+  _updateTemplatePreview() {
+    const fields = ImportConfig.fields;
+    // Read current state from DOM
+    fields.forEach(f => {
+      const enEl = document.getElementById(`ten_${f.id}`);
+      const lbEl = document.getElementById(`tlabel_${f.id}`);
+      const rqEl = document.getElementById(`treq_${f.id}`);
+      if (enEl) f.enabled      = enEl.checked;
+      if (lbEl) f.customLabel  = lbEl.value;
+      if (rqEl) f.required     = rqEl.checked;
+    });
+    const prev = document.getElementById('templatePreview');
+    if (prev) prev.innerHTML = this._buildPreviewRow(fields);
+  },
+
+  _templateSave() {
+    const fields = ImportConfig.fields;
+    fields.forEach(f => {
+      const enEl = document.getElementById(`ten_${f.id}`);
+      const lbEl = document.getElementById(`tlabel_${f.id}`);
+      const rqEl = document.getElementById(`treq_${f.id}`);
+      if (enEl) f.enabled     = enEl.checked;
+      if (lbEl) f.customLabel = lbEl.value.trim();
+      if (rqEl) f.required    = rqEl.checked;
+    });
+    ImportConfig.save(fields);
+    Utils.toast('Đã lưu cấu hình mẫu nhập liệu!', 'success');
+    this._updateTemplatePreview();
+  },
+
+  _templateReset() {
+    Utils.confirm('Đặt lại mẫu về mặc định?', () => {
+      ImportConfig.reset();
+      Settings.switchSection('template');
+      Utils.toast('Đã đặt lại mẫu về mặc định', 'success');
+    });
+  },
+
+  _downloadPreviewTemplate() {
+    const fields = ImportConfig.fields;
+    // Save current DOM state first
+    fields.forEach(f => {
+      const enEl = document.getElementById(`ten_${f.id}`);
+      const lbEl = document.getElementById(`tlabel_${f.id}`);
+      if (enEl) f.enabled     = enEl.checked;
+      if (lbEl) f.customLabel = lbEl.value.trim();
+    });
+    ImportConfig.save(fields);
+    const csv  = ImportConfig.buildCsv();
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'mau_nhap_nhan_vien.csv';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    Utils.toast('Đã tải file mẫu CSV!', 'success');
+  },
 
   sectionNotif() { return `
     <div class="card">
