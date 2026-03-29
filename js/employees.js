@@ -394,6 +394,7 @@ const Employees = {
      NHẬP HÀNG LOẠT
   ════════════════════════════════════════ */
   _importRows: [],   // hàng đã parse
+  _validRows:  [],   // hàng hợp lệ để xác nhận
   _importStep: 1,    // 1 = upload, 2 = preview
 
   openBulkImport() {
@@ -575,7 +576,10 @@ const Employees = {
 
     const valid   = parsed.filter(p => p.errors.length === 0);
     const invalid = parsed.filter(p => p.errors.length > 0);
-    const displayFields = fields.slice(0, 6); // Hiển thị tối đa 6 cột
+    const displayFields = fields.slice(0, 6);
+
+    // Lưu vào biến module thay vì truyền qua HTML attribute
+    this._validRows = valid.map(p => p.obj);
 
     Utils.openModal('Xem trước dữ liệu nhập', `
       <!-- Steps -->
@@ -657,16 +661,15 @@ const Employees = {
       <button class="btn btn-secondary" onclick="Employees._importRows=[];Employees.openBulkImport()">
         <i class="fa-solid fa-arrow-left"></i> Quay lại
       </button>
-      <button class="btn btn-primary" ${valid.length===0?'disabled style="opacity:.4"':''} onclick="Employees._confirmImport(${JSON.stringify(valid.map(p=>p.obj)).replace(/"/g,'&quot;')})">
+      <button class="btn btn-primary" ${valid.length===0?'disabled style="opacity:.4"':''} onclick="Employees._confirmImport()">
         <i class="fa-solid fa-file-import"></i> Nhập ${valid.length} nhân viên hợp lệ
       </button>
     `, true);
   },
 
   /* ── Bước 3: Thực hiện nhập ── */
-  _confirmImport(rows) {
-    // rows có thể là string từ attribute, cần parse
-    const list = typeof rows === 'string' ? JSON.parse(rows.replace(/&quot;/g,'"')) : rows;
+  _confirmImport() {
+    const list = this._validRows;
     if (!list?.length) return;
 
     let nextId = Math.max(...DB.employees.map(e => e.id)) + 1;

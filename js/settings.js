@@ -211,7 +211,7 @@ const Settings = {
         </div>
 
         <!-- Field table -->
-        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px">
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px">
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead>
               <tr style="background:var(--bg)">
@@ -220,10 +220,11 @@ const Settings = {
                 <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)">TÊN CỘT TRONG FILE MẪU</th>
                 <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)">BẮT BUỘC</th>
                 <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)">VÍ DỤ</th>
+                <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)"></th>
               </tr>
             </thead>
             <tbody id="templateFieldTable">
-              ${fields.map((f, idx) => `
+              ${fields.map((f) => `
                 <tr id="trow_${f.id}" style="border-bottom:1px solid var(--border-light);opacity:${f.enabled?'1':'.5'}">
                   <td style="padding:10px 14px">
                     <label class="switch" style="margin:0">
@@ -233,8 +234,13 @@ const Settings = {
                     </label>
                   </td>
                   <td style="padding:10px 14px">
-                    <div style="font-weight:600;color:var(--text-dark)">${f.label}</div>
-                    <div style="font-size:11px;color:var(--text-muted);font-family:monospace">${f.id}</div>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <div>
+                        <div style="font-weight:600;color:var(--text-dark)">${f.label}</div>
+                        <div style="font-size:11px;color:var(--text-muted);font-family:monospace">${f.id}</div>
+                      </div>
+                      ${f._custom ? '<span style="font-size:10px;background:var(--primary-light,#e0e7ff);color:var(--primary);padding:1px 6px;border-radius:10px;font-weight:600">Tùy chỉnh</span>' : ''}
+                    </div>
                   </td>
                   <td style="padding:10px 14px;min-width:200px">
                     <input class="form-control" id="tlabel_${f.id}" value="${f.customLabel || f.label}"
@@ -250,9 +256,19 @@ const Settings = {
                     </label>
                   </td>
                   <td style="padding:10px 14px;font-size:12px;color:var(--text-muted);font-family:monospace">${f.example}</td>
+                  <td style="padding:10px 14px;text-align:center">
+                    ${f._custom ? `<button class="btn btn-sm btn-icon" style="color:var(--danger);background:transparent;border:none;cursor:pointer;padding:4px 8px" title="Xóa trường" onclick="Settings._deleteField('${f.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
+                  </td>
                 </tr>`).join('')}
             </tbody>
           </table>
+        </div>
+
+        <!-- Add field button -->
+        <div style="margin-bottom:20px">
+          <button class="btn btn-secondary" onclick="Settings._addFieldModal()">
+            <i class="fa-solid fa-plus"></i> Thêm trường thông tin
+          </button>
         </div>
 
         <!-- Preview -->
@@ -336,6 +352,80 @@ const Settings = {
       ImportConfig.reset();
       Settings.switchSection('template');
       Utils.toast('Đã đặt lại mẫu về mặc định', 'success');
+    });
+  },
+
+  _addFieldModal() {
+    Utils.openModal('Thêm trường thông tin tùy chỉnh', `
+      <div class="form-group">
+        <label class="form-label">Tên trường <span style="color:var(--danger)">*</span></label>
+        <input class="form-control" id="nfLabel" placeholder="VD: Số CMND/CCCD" oninput="Settings._autoFieldId()" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">ID trường <span style="font-size:11px;color:var(--text-muted)">(tự động, không dấu)</span></label>
+        <input class="form-control" id="nfId" placeholder="VD: cmnd" style="font-family:monospace" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tên cột trong file CSV <span style="font-size:11px;color:var(--text-muted)">(để trống = dùng tên trường)</span></label>
+        <input class="form-control" id="nfCustomLabel" placeholder="VD: CMND/CCCD" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Giá trị ví dụ</label>
+        <input class="form-control" id="nfExample" placeholder="VD: 079201012345" />
+      </div>
+      <div class="perm-toggle" style="margin-top:4px">
+        <span style="font-size:13px">Bắt buộc nhập</span>
+        <label class="switch">
+          <input type="checkbox" id="nfRequired" />
+          <span class="slider"></span>
+        </label>
+      </div>
+    `, `
+      <button class="btn btn-secondary" onclick="Utils.closeModal()">Hủy</button>
+      <button class="btn btn-primary" onclick="Settings._addField()">
+        <i class="fa-solid fa-plus"></i> Thêm trường
+      </button>
+    `);
+  },
+
+  _autoFieldId() {
+    const label = document.getElementById('nfLabel')?.value || '';
+    const id = label.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/đ/g,'d').replace(/[^a-z0-9]+/g,'_')
+      .replace(/^_+|_+$/g,'');
+    const el = document.getElementById('nfId');
+    if (el) el.value = id;
+  },
+
+  _addField() {
+    const label       = (document.getElementById('nfLabel')?.value || '').trim();
+    const id          = (document.getElementById('nfId')?.value || '').trim();
+    const customLabel = (document.getElementById('nfCustomLabel')?.value || '').trim();
+    const example     = (document.getElementById('nfExample')?.value || '').trim();
+    const required    = document.getElementById('nfRequired')?.checked || false;
+
+    if (!label) { Utils.toast('Vui lòng nhập tên trường', 'error'); return; }
+    if (!id)    { Utils.toast('ID trường không hợp lệ', 'error'); return; }
+
+    const fields = ImportConfig.fields;
+    if (fields.find(f => f.id === id)) {
+      Utils.toast('ID trường đã tồn tại, vui lòng đổi tên khác', 'error'); return;
+    }
+
+    fields.push({ id, label, required, enabled: true, customLabel, example, _custom: true });
+    ImportConfig.save(fields);
+    Utils.closeModal();
+    Settings.switchSection('template');
+    Utils.toast(`Đã thêm trường "${label}"`, 'success');
+  },
+
+  _deleteField(id) {
+    Utils.confirm('Xóa trường này khỏi mẫu nhập liệu?', () => {
+      const fields = ImportConfig.fields.filter(f => f.id !== id);
+      ImportConfig.save(fields);
+      Settings.switchSection('template');
+      Utils.toast('Đã xóa trường', 'success');
     });
   },
 
