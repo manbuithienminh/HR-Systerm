@@ -640,6 +640,28 @@ const STATUS_COL = '__hrm_status';
 const DB_TABLES  = ['employees','departments','attendance','leaves',
                     'payroll','documents','assets','roles','recruitment'];
 
+// Tên subfolder cho từng nghiệp vụ
+const TABLE_FOLDERS = {
+  employees:   '01. Nhân viên',
+  departments: '02. Phòng ban',
+  attendance:  '03. Chấm công',
+  leaves:      '04. Nghỉ phép',
+  payroll:     '05. Tính lương',
+  documents:   '06. Văn bản',
+  assets:      '07. Tài sản &amp; Thiết bị',
+  roles:       '08. Phân quyền',
+  recruitment: '09. Tuyển dụng',
+};
+const INTAKE_FOLDER = '10. Hồ sơ NLĐ';
+
+// ── Lấy hoặc tạo subfolder ────────────────────────
+function getOrCreateFolder(parentId, name) {
+  const parent = DriveApp.getFolderById(parentId);
+  const existing = parent.getFoldersByName(name);
+  if (existing.hasNext()) return existing.next();
+  return parent.createFolder(name);
+}
+
 // ── GET: đọc dữ liệu ──────────────────────────────
 function doGet(e) {
   const p = e.parameter;
@@ -677,22 +699,27 @@ function getAllTables() {
   return result;
 }
 
-// ── Lưu 1 bảng vào Sheet + Drive ─────────────────
+// ── Lưu 1 bảng vào Sheet + Drive subfolder ────────
 function saveTable(name, data) {
   if (!name || !DB_TABLES.includes(name)) return {ok:false,error:'Invalid table'};
+
+  // Lưu vào Google Sheet (để đọc nhanh)
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('hrm_'+name);
   if (!sheet) { sheet = ss.insertSheet('hrm_'+name); sheet.getRange(1,1).setValue('json'); }
   sheet.getRange(2,1).setValue(JSON.stringify(data));
-  // Backup file JSON vào Drive
+
+  // Backup JSON vào subfolder tương ứng trong Drive
   try {
-    const folder = DriveApp.getFolderById(FOLDER_ID);
-    const fname  = 'hrm_'+name+'.json';
-    const json   = JSON.stringify(data, null, 2);
-    const files  = folder.getFilesByName(fname);
+    const folderName = TABLE_FOLDERS[name] || name;
+    const subFolder  = getOrCreateFolder(FOLDER_ID, folderName);
+    const fname      = 'hrm_'+name+'.json';
+    const json       = JSON.stringify(data, null, 2);
+    const files      = subFolder.getFilesByName(fname);
     if (files.hasNext()) files.next().setContent(json);
-    else folder.createFile(fname, json, 'application/json');
-  } catch(e) { console.log('Drive backup error',e); }
+    else subFolder.createFile(fname, json, 'application/json');
+  } catch(e) { console.log('Drive backup error', e); }
+
   return {ok:true};
 }
 
@@ -726,16 +753,18 @@ function setStatus(rowNum, status) {
   return {ok:true};
 }
 
+// ── Lưu hồ sơ NLĐ vào subfolder riêng ───────────
 function saveFormRowToDrive(rowNum, headers) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
     const row   = sheet.getRange(rowNum,1,1,headers.length).getValues()[0];
     const data  = {};
     headers.forEach((h,i) => { if(h !== STATUS_COL) data[h] = row[i]; });
-    const name = data['Họ và tên'] || ('HoSo_'+rowNum);
-    const date = new Date().toLocaleDateString('vi-VN').replace(/\\//g,'-');
-    DriveApp.getFolderById(FOLDER_ID)
-      .createFile(name+'_'+date+'.json', JSON.stringify(data,null,2),'application/json');
+    const name   = data['Họ và tên'] || ('HoSo_'+rowNum);
+    const date   = new Date().toLocaleDateString('vi-VN').replace(/\\//g,'-');
+    const folder = getOrCreateFolder(FOLDER_ID, INTAKE_FOLDER);
+    folder.createFile(name+'_'+date+'.json',
+      JSON.stringify(data,null,2), 'application/json');
   } catch(e) { console.log('Drive error',e); }
 }
 
