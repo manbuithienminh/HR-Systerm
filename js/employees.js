@@ -278,8 +278,12 @@ const Employees = {
           <input class="form-control" id="fName" value="${e?.name||''}" placeholder="Nhập họ tên..." />
         </div>
         <div class="form-group">
-          <label class="form-label">Mã nhân viên <span style="font-size:10px;color:var(--text-muted)">(tự động theo ngày vào làm)</span></label>
-          <input class="form-control" id="fCode" value="${initCode}" placeholder="YYMMDDXXXX" style="font-family:monospace" />
+          <label class="form-label">Mã nhân viên
+            ${isEdit ? '' : '<span style="font-size:10px;color:var(--text-muted)">(tự động theo ngày vào làm)</span>'}
+          </label>
+          <input class="form-control" id="fCode" value="${initCode}" placeholder="YYMMDDXXXX"
+            style="font-family:monospace${isEdit ? ';background:var(--bg);color:var(--text-muted);cursor:not-allowed' : ''}"
+            ${isEdit ? 'readonly title="Mã nhân viên không thể thay đổi sau khi đã tạo"' : ''} />
         </div>
       </div>
       <div class="form-row">
