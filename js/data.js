@@ -44,7 +44,13 @@ const DB = {
       localStorage.setItem(this._dbKey, JSON.stringify(all));
     } catch(e) { console.warn('DB.save localStorage error', e); }
     // 2. Drive (nền, fire-and-forget)
-    this._postToDrive({ action: 'saveTable', table, data: this[table] });
+    const cfg = SettingsStore.get('forms_integration');
+    if (cfg.webAppUrl) {
+      if (typeof SyncUI !== 'undefined') SyncUI.show('syncing', 'Đang lưu Drive…');
+      this._postToDrive({ action: 'saveTable', table, data: this[table] });
+      // Optimistically show ok after 2s (fire-and-forget, no callback)
+      setTimeout(() => { if (typeof SyncUI !== 'undefined') SyncUI.show('ok', 'Đã lưu Drive'); }, 2000);
+    }
   },
 
   /* Tải tất cả từ localStorage khi khởi động */
@@ -60,12 +66,15 @@ const DB = {
     const cfg = SettingsStore.get('forms_integration');
     if (!cfg.webAppUrl) { if (onDone) onDone(false, 'Chưa cấu hình Apps Script'); return; }
     const url = `${cfg.webAppUrl}?action=getAllTables&token=${encodeURIComponent(cfg.token || '')}`;
-    fetch(url)
+    fetch(url, { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (!data.ok) throw new Error(data.error || 'Lỗi API');
+        // Restore all DB tables
         this._tables.forEach(t => { if (Array.isArray(data[t])) this[t] = data[t]; });
-        // Cập nhật cache localStorage
+        // Restore settings (company, profile, salary, leave, notif — NOT forms_integration)
+        if (data.__settings__) SettingsStore.applyFromDrive(data.__settings__);
+        // Update localStorage cache
         const all = {};
         this._tables.forEach(t => all[t] = this[t]);
         localStorage.setItem(this._dbKey, JSON.stringify(all));
@@ -182,16 +191,36 @@ const SettingsStore = {
     try { return JSON.parse(localStorage.getItem(this._key) || '{}')[section] || {}; }
     catch { return {}; }
   },
+  getAll() {
+    try { return JSON.parse(localStorage.getItem(this._key) || '{}'); }
+    catch { return {}; }
+  },
   set(section, data) {
     try {
       const all = JSON.parse(localStorage.getItem(this._key) || '{}');
       all[section] = Object.assign(all[section] || {}, data);
       localStorage.setItem(this._key, JSON.stringify(all));
+      // Sync settings to Drive (except forms_integration itself to avoid circular)
+      if (section !== 'forms_integration' && typeof DB !== 'undefined') {
+        DB._postToDrive({ action: 'saveTable', table: '__settings__', data: all });
+      }
     } catch {}
   },
   val(section, key, def) {
     const v = this.get(section)[key];
     return (v !== undefined && v !== null) ? v : def;
+  },
+  /* Apply settings fetched from Drive */
+  applyFromDrive(obj) {
+    try {
+      if (!obj || typeof obj !== 'object') return;
+      const cur = JSON.parse(localStorage.getItem(this._key) || '{}');
+      // Merge: Drive wins for all sections except forms_integration (keep local)
+      const localForms = cur.forms_integration;
+      Object.assign(cur, obj);
+      if (localForms && localForms.webAppUrl) cur.forms_integration = localForms;
+      localStorage.setItem(this._key, JSON.stringify(cur));
+    } catch {}
   },
 };
 

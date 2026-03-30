@@ -676,7 +676,7 @@ const HRM_TOKEN  = '${token}';
 const FOLDER_ID  = '1myxvUd6Y_G9SJr-EzzfWKl1IL-_Dn3tm';
 const STATUS_COL = '__hrm_status';
 const DB_TABLES  = ['employees','departments','attendance','leaves',
-                    'payroll','documents','assets','roles','recruitment'];
+                    'payroll','documents','assets','roles','recruitment','__settings__'];
 
 // Tên subfolder cho từng nghiệp vụ
 const TABLE_FOLDERS = {
@@ -687,8 +687,9 @@ const TABLE_FOLDERS = {
   payroll:     '05. Tính lương',
   documents:   '06. Văn bản',
   assets:      '07. Tài sản &amp; Thiết bị',
-  roles:       '08. Phân quyền',
-  recruitment: '09. Tuyển dụng',
+  roles:         '08. Phân quyền',
+  recruitment:   '09. Tuyển dụng',
+  __settings__:  '00. Cài đặt hệ thống',
 };
 const INTAKE_FOLDER = '10. Hồ sơ NLĐ';
 
@@ -731,15 +732,15 @@ function getAllTables() {
     const s = ss.getSheetByName('hrm_'+t);
     if (s &amp;&amp; s.getLastRow() &gt;= 2) {
       try { result[t] = JSON.parse(s.getRange(2,1).getValue()); }
-      catch { result[t] = []; }
-    } else { result[t] = []; }
+      catch { result[t] = t === '__settings__' ? {} : []; }
+    } else { result[t] = t === '__settings__' ? {} : []; }
   });
   return result;
 }
 
 // ── Lưu 1 bảng vào Sheet + Drive subfolder ────────
 function saveTable(name, data) {
-  if (!name || !DB_TABLES.includes(name)) return {ok:false,error:'Invalid table'};
+  if (!name || !DB_TABLES.includes(name)) return {ok:false,error:'Invalid table '+name};
 
   // Lưu vào Google Sheet (để đọc nhanh)
   const ss = SpreadsheetApp.getActiveSpreadsheet();

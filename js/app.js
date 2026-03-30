@@ -117,9 +117,57 @@ document.getElementById('globalSearch').addEventListener('input', Utils.debounce
   } catch(e) { /* invalid hash, ignore */ }
 })();
 
+/* ── Sync status indicator ── */
+const SyncUI = {
+  _timer: null,
+  show(state, msg) {
+    const el = document.getElementById('syncStatus');
+    if (!el) return;
+    clearTimeout(this._timer);
+    const styles = {
+      syncing: { bg:'#e8f0fe', color:'#1a73e8', icon:'fa-rotate fa-spin' },
+      ok:      { bg:'#e6f4ea', color:'#188038', icon:'fa-cloud-check' },
+      error:   { bg:'#fce8e6', color:'#c5221f', icon:'fa-cloud-xmark' },
+      offline: { bg:'#fef7e0', color:'#b06000', icon:'fa-cloud-arrow-up' },
+    };
+    const s = styles[state] || styles.offline;
+    el.style.display = 'flex';
+    el.style.background = s.bg;
+    el.style.color = s.color;
+    el.innerHTML = `<i class="fa-solid ${s.icon}" style="font-size:13px"></i> ${msg}`;
+    if (state === 'ok') this._timer = setTimeout(() => { el.style.display = 'none'; }, 4000);
+  },
+};
+
+/* ── Auto-sync from Drive on startup ── */
+function _autoSyncOnStart() {
+  const cfg = SettingsStore.get('forms_integration');
+  if (!cfg.webAppUrl) return; // Drive not configured
+
+  const hasLocalData = DB._tables.some(t => DB[t].length > 0);
+  SyncUI.show('syncing', 'Đang đồng bộ Drive…');
+
+  DB.loadFromDrive((ok, err) => {
+    if (ok) {
+      SyncUI.show('ok', 'Đã đồng bộ');
+      // Re-render current page with fresh data
+      Settings.syncSidebar();
+      navigate(currentPage);
+    } else {
+      if (hasLocalData) {
+        // Has local data — just warn silently
+        SyncUI.show('offline', 'Dùng dữ liệu cục bộ');
+      } else {
+        SyncUI.show('error', 'Không thể tải Drive');
+      }
+    }
+  });
+}
+
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
   DB.loadAll();
   Settings.syncSidebar();
   navigate('dashboard');
+  _autoSyncOnStart();
 });
