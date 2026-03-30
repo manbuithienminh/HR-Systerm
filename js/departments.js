@@ -81,25 +81,29 @@ const Departments = {
   },
 
   renderOrgChart() {
-    const ceo = DB.getEmp(18);
+    if (!DB.departments.length) {
+      return `<div style="text-align:center;padding:48px;color:var(--text-muted)"><i class="fa-solid fa-sitemap" style="font-size:40px;margin-bottom:12px;display:block;opacity:.3"></i>Chưa có dữ liệu phòng ban</div>`;
+    }
+    // Tìm nhân viên cấp cao nhất (lương cao nhất hoặc phòng ban đầu tiên có manager)
+    const topMgr = DB.employees.find(e => e.pos && e.pos.toLowerCase().includes('giám đốc')) || DB.employees[0];
     return `
       <div style="text-align:center;min-width:600px">
-        <!-- CEO -->
+        <!-- Top manager -->
+        ${topMgr ? `
         <div style="display:inline-flex;flex-direction:column;align-items:center;margin-bottom:8px">
           <div style="background:var(--bg-card);border:2px solid var(--primary);border-radius:12px;padding:12px 20px;display:flex;align-items:center;gap:10px">
-            <div class="user-avatar gradient-orange">${ceo.avatar}</div>
+            <div class="user-avatar ${topMgr.color||'gradient-orange'}">${topMgr.avatar||topMgr.name.charAt(0)}</div>
             <div>
-              <div style="font-weight:700">${ceo.name}</div>
-              <div style="font-size:11px;color:var(--text-muted)">${ceo.pos}</div>
+              <div style="font-weight:700">${topMgr.name}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${topMgr.pos}</div>
             </div>
           </div>
           <div style="width:2px;height:24px;background:var(--border)"></div>
-        </div>
+        </div>` : ''}
         <!-- Departments row -->
         <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap">
           ${DB.departments.slice(0,5).map(dept => {
             const mgr = DB.getEmp(dept.manager);
-            const emps = DB.employees.filter(e=>e.dept===dept.id&&e.id!==dept.manager);
             return `
               <div style="display:flex;flex-direction:column;align-items:center">
                 <div style="background:var(--bg-card);border:1px solid var(--border);border-top:3px solid;border-top-color:var(--primary);border-radius:10px;padding:10px 16px;min-width:130px;text-align:center">

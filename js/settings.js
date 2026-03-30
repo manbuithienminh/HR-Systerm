@@ -134,7 +134,7 @@ const Settings = {
   },
 
   sectionProfile() {
-    const me = DB.getEmp(12);
+    const me = DB.getEmp(12) || { color:'gradient-indigo', avatar:'HR', name:'', email:'', phone:'', dob:'' };
     const s  = SettingsStore.get('profile');
     const name  = s.name  !== undefined ? s.name  : me.name;
     const email = s.email !== undefined ? s.email : me.email;
