@@ -309,6 +309,26 @@ const ImportConfig = {
   },
 };
 
+/* ── Settings persistent store ── */
+const SettingsStore = {
+  _key: 'hrm_settings',
+  get(section) {
+    try { return JSON.parse(localStorage.getItem(this._key) || '{}')[section] || {}; }
+    catch { return {}; }
+  },
+  set(section, data) {
+    try {
+      const all = JSON.parse(localStorage.getItem(this._key) || '{}');
+      all[section] = Object.assign(all[section] || {}, data);
+      localStorage.setItem(this._key, JSON.stringify(all));
+    } catch {}
+  },
+  val(section, key, def) {
+    const v = this.get(section)[key];
+    return (v !== undefined && v !== null) ? v : def;
+  },
+};
+
 /* ── Helper lookups ── */
 DB.getEmp  = (id) => DB.employees.find(e => e.id === id);
 DB.getDept = (id) => DB.departments.find(d => d.id === id);

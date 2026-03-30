@@ -61,47 +61,86 @@ const Settings = {
     }
   },
 
-  sectionCompany() { return `
+  sectionCompany() {
+    const s = SettingsStore.get('company');
+    const v = (k,d) => s[k] !== undefined ? s[k] : d;
+    const name    = v('name',    'HRM Pro Corp');
+    const tax     = v('tax',     '0123456789');
+    const email   = v('email',   'contact@hrmpro.vn');
+    const phone   = v('phone',   '028 3823 0000');
+    const address = v('address', '123 Nguyễn Huệ, Q1, TP. Hồ Chí Minh');
+    const founded = v('founded', '2015-03-15');
+    const size    = v('size',    '50-200');
+    const initial = name.charAt(0).toUpperCase();
+    return `
     <div class="card">
       <div class="card-header"><span class="card-title">Thông tin công ty</span></div>
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
-          <div style="width:80px;height:80px;border-radius:16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;font-weight:800">H</div>
+          <div style="width:80px;height:80px;border-radius:16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;font-weight:800">${initial}</div>
           <div>
-            <div style="font-size:16px;font-weight:700">HRM Pro Corp</div>
-            <div style="font-size:12px;color:var(--text-muted)">MST: 0123456789</div>
+            <div style="font-size:16px;font-weight:700">${name}</div>
+            <div style="font-size:12px;color:var(--text-muted)">MST: ${tax}</div>
             <button class="btn btn-sm btn-secondary mt-8">Đổi logo</button>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Tên công ty</label>
-            <input class="form-control" value="HRM Pro Corp" /></div>
+            <input class="form-control" id="sc_name" value="${name}" /></div>
           <div class="form-group"><label class="form-label">Mã số thuế</label>
-            <input class="form-control" value="0123456789" /></div>
+            <input class="form-control" id="sc_tax" value="${tax}" /></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Email</label>
-            <input class="form-control" value="contact@hrmpro.vn" /></div>
+            <input class="form-control" id="sc_email" value="${email}" /></div>
           <div class="form-group"><label class="form-label">Điện thoại</label>
-            <input class="form-control" value="028 3823 0000" /></div>
+            <input class="form-control" id="sc_phone" value="${phone}" /></div>
         </div>
         <div class="form-group"><label class="form-label">Địa chỉ</label>
-          <input class="form-control" value="123 Nguyễn Huệ, Q1, TP. Hồ Chí Minh" /></div>
+          <input class="form-control" id="sc_address" value="${address}" /></div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Ngày thành lập</label>
-            <input class="form-control" type="date" value="2015-03-15" /></div>
+            <input class="form-control" type="date" id="sc_founded" value="${founded}" /></div>
           <div class="form-group"><label class="form-label">Quy mô</label>
-            <select class="form-control"><option>10–50 nhân viên</option><option selected>50–200 nhân viên</option><option>200–500 nhân viên</option></select></div>
+            <select class="form-control" id="sc_size">
+              <option value="10-50" ${size==='10-50'?'selected':''}>10–50 nhân viên</option>
+              <option value="50-200" ${size==='50-200'?'selected':''}>50–200 nhân viên</option>
+              <option value="200-500" ${size==='200-500'?'selected':''}>200–500 nhân viên</option>
+              <option value="500+" ${size==='500+'?'selected':''}>Trên 500 nhân viên</option>
+            </select></div>
         </div>
         <div style="text-align:right;margin-top:4px">
-          <button class="btn btn-primary" onclick="Utils.toast('Đã lưu thông tin công ty!','success')">
+          <button class="btn btn-primary" onclick="Settings._saveCompany()">
             <i class="fa-solid fa-save"></i> Lưu thay đổi
           </button>
         </div>
       </div>
     </div>`; },
 
-  sectionProfile() { const me = DB.getEmp(12); return `
+  _saveCompany() {
+    const d = {
+      name:    document.getElementById('sc_name')?.value.trim()    || '',
+      tax:     document.getElementById('sc_tax')?.value.trim()     || '',
+      email:   document.getElementById('sc_email')?.value.trim()   || '',
+      phone:   document.getElementById('sc_phone')?.value.trim()   || '',
+      address: document.getElementById('sc_address')?.value.trim() || '',
+      founded: document.getElementById('sc_founded')?.value        || '',
+      size:    document.getElementById('sc_size')?.value           || '50-200',
+    };
+    SettingsStore.set('company', d);
+    Utils.toast('Đã lưu thông tin công ty!', 'success');
+    // Refresh header block
+    Settings.switchSection('company');
+  },
+
+  sectionProfile() {
+    const me = DB.getEmp(12);
+    const s  = SettingsStore.get('profile');
+    const name  = s.name  !== undefined ? s.name  : me.name;
+    const email = s.email !== undefined ? s.email : me.email;
+    const phone = s.phone !== undefined ? s.phone : me.phone;
+    const dob   = s.dob   !== undefined ? s.dob   : me.dob;
+    return `
     <div class="card">
       <div class="card-header"><span class="card-title">Hồ sơ cá nhân</span></div>
       <div class="card-body">
@@ -111,75 +150,110 @@ const Settings = {
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Họ và tên</label>
-            <input class="form-control" value="${me.name}" /></div>
+            <input class="form-control" id="sp_name" value="${name}" /></div>
           <div class="form-group"><label class="form-label">Email</label>
-            <input class="form-control" value="${me.email}" /></div>
+            <input class="form-control" id="sp_email" value="${email}" /></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Điện thoại</label>
-            <input class="form-control" value="${me.phone}" /></div>
+            <input class="form-control" id="sp_phone" value="${phone}" /></div>
           <div class="form-group"><label class="form-label">Ngày sinh</label>
-            <input class="form-control" type="date" value="${me.dob}" /></div>
+            <input class="form-control" type="date" id="sp_dob" value="${dob}" /></div>
         </div>
         <div style="text-align:right">
-          <button class="btn btn-primary" onclick="Utils.toast('Đã cập nhật hồ sơ!','success')">
+          <button class="btn btn-primary" onclick="Settings._saveProfile()">
             <i class="fa-solid fa-save"></i> Lưu
           </button>
         </div>
       </div>
     </div>`; },
 
-  sectionSalary() { return `
+  _saveProfile() {
+    const d = {
+      name:  document.getElementById('sp_name')?.value.trim()  || '',
+      email: document.getElementById('sp_email')?.value.trim() || '',
+      phone: document.getElementById('sp_phone')?.value.trim() || '',
+      dob:   document.getElementById('sp_dob')?.value          || '',
+    };
+    SettingsStore.set('profile', d);
+    Utils.toast('Đã cập nhật hồ sơ cá nhân!', 'success');
+  },
+
+  sectionSalary() {
+    const s = SettingsStore.get('salary');
+    const rows = [
+      {id:'min_wage',    label:'Lương tối thiểu vùng 1',       def:'4,680,000đ'},
+      {id:'bhxh_emp',    label:'Tỷ lệ đóng BHXH nhân viên',    def:'8%'},
+      {id:'bhyt_emp',    label:'Tỷ lệ đóng BHYT nhân viên',    def:'1.5%'},
+      {id:'bhtn_emp',    label:'Tỷ lệ đóng BHTN nhân viên',    def:'1%'},
+      {id:'bhxh_co',     label:'Tỷ lệ đóng BHXH công ty',      def:'17%'},
+      {id:'tncn_thresh', label:'Ngưỡng chịu thuế TNCN',        def:'11,000,000đ / tháng'},
+      {id:'ded_self',    label:'Giảm trừ gia cảnh bản thân',   def:'11,000,000đ'},
+      {id:'ded_dep',     label:'Giảm trừ người phụ thuộc',     def:'4,400,000đ / người'},
+    ];
+    return `
     <div class="card">
       <div class="card-header"><span class="card-title">Cấu hình lương & Phụ cấp</span></div>
       <div class="card-body">
-        ${[
-          {label:'Lương tối thiểu vùng 1',val:'4,680,000đ'},
-          {label:'Tỷ lệ đóng BHXH nhân viên',val:'8%'},
-          {label:'Tỷ lệ đóng BHYT nhân viên',val:'1.5%'},
-          {label:'Tỷ lệ đóng BHTN nhân viên',val:'1%'},
-          {label:'Tỷ lệ đóng BHXH công ty',val:'17%'},
-          {label:'Ngưỡng chịu thuế TNCN',val:'11,000,000đ / tháng'},
-          {label:'Giảm trừ gia cảnh bản thân',val:'11,000,000đ'},
-          {label:'Giảm trừ người phụ thuộc',val:'4,400,000đ / người'},
-        ].map(r=>`
+        ${rows.map(r=>`
           <div class="perm-toggle">
             <span style="font-size:13px">${r.label}</span>
             <div style="display:flex;align-items:center;gap:8px">
-              <input class="form-control" style="width:160px;text-align:right" value="${r.val}" />
+              <input class="form-control" id="ss_${r.id}" style="width:180px;text-align:right"
+                value="${s[r.id] !== undefined ? s[r.id] : r.def}" />
             </div>
           </div>`).join('')}
         <div style="text-align:right;margin-top:16px">
-          <button class="btn btn-primary" onclick="Utils.toast('Đã lưu cấu hình lương!','success')">
+          <button class="btn btn-primary" onclick="Settings._saveSalary()">
             <i class="fa-solid fa-save"></i> Lưu
           </button>
         </div>
       </div>
     </div>`; },
 
-  sectionLeave() { return `
+  _saveSalary() {
+    const keys = ['min_wage','bhxh_emp','bhyt_emp','bhtn_emp','bhxh_co','tncn_thresh','ded_self','ded_dep'];
+    const d = {};
+    keys.forEach(k => { const el = document.getElementById(`ss_${k}`); if(el) d[k] = el.value.trim(); });
+    SettingsStore.set('salary', d);
+    Utils.toast('Đã lưu cấu hình lương!', 'success');
+  },
+
+  sectionLeave() {
+    const s = SettingsStore.get('leave');
+    const rows = [
+      {id:'annual',     label:'Nghỉ phép năm (toàn thời gian)',    def:'12 ngày'},
+      {id:'sick',       label:'Nghỉ bệnh có lương',                 def:'30 ngày'},
+      {id:'maternity',  label:'Nghỉ thai sản',                      def:'6 tháng'},
+      {id:'wedding',    label:'Nghỉ hôn lễ',                        def:'3 ngày'},
+      {id:'funeral',    label:'Nghỉ tang gia (thân nhân cấp 1)',    def:'3 ngày'},
+      {id:'probation',  label:'Thử việc – nghỉ phép năm',           def:'0 ngày (không tính)'},
+    ];
+    return `
     <div class="card">
       <div class="card-header"><span class="card-title">Chính sách nghỉ phép</span></div>
       <div class="card-body">
-        ${[
-          {label:'Nghỉ phép năm (toàn thời gian)',val:'12 ngày'},
-          {label:'Nghỉ bệnh có lương',val:'30 ngày'},
-          {label:'Nghỉ thai sản',val:'6 tháng'},
-          {label:'Nghỉ hôn lễ',val:'3 ngày'},
-          {label:'Nghỉ tang gia (thân nhân cấp 1)',val:'3 ngày'},
-          {label:'Thử việc – nghỉ phép năm',val:'0 ngày (không tính)'},
-        ].map(r=>`
+        ${rows.map(r=>`
           <div class="perm-toggle">
             <span>${r.label}</span>
-            <input class="form-control" style="width:200px" value="${r.val}" />
+            <input class="form-control" id="sl_${r.id}" style="width:200px"
+              value="${s[r.id] !== undefined ? s[r.id] : r.def}" />
           </div>`).join('')}
         <div style="text-align:right;margin-top:16px">
-          <button class="btn btn-primary" onclick="Utils.toast('Đã lưu chính sách nghỉ phép!','success')">
+          <button class="btn btn-primary" onclick="Settings._saveLeave()">
             <i class="fa-solid fa-save"></i> Lưu
           </button>
         </div>
       </div>
     </div>`; },
+
+  _saveLeave() {
+    const keys = ['annual','sick','maternity','wedding','funeral','probation'];
+    const d = {};
+    keys.forEach(k => { const el = document.getElementById(`sl_${k}`); if(el) d[k] = el.value.trim(); });
+    SettingsStore.set('leave', d);
+    Utils.toast('Đã lưu chính sách nghỉ phép!', 'success');
+  },
 
   sectionTemplate() {
     const fields = ImportConfig.fields;
@@ -449,28 +523,47 @@ const Settings = {
     Utils.toast('Đã tải file mẫu CSV!', 'success');
   },
 
-  sectionNotif() { return `
+  sectionNotif() {
+    const s = SettingsStore.get('notif');
+    const items = [
+      {id:'leave',    label:'Thông báo khi có đơn nghỉ phép mới',   def:true},
+      {id:'attend',   label:'Thông báo nhắc nhở chấm công',          def:true},
+      {id:'payroll',  label:'Thông báo ngày phát lương',             def:true},
+      {id:'birthday', label:'Thông báo sinh nhật nhân viên',         def:false},
+      {id:'warranty', label:'Thông báo hết hạn bảo hành tài sản',   def:true},
+      {id:'contract', label:'Thông báo hợp đồng sắp hết hạn',       def:true},
+      {id:'email',    label:'Thông báo qua email',                   def:false},
+    ];
+    return `
     <div class="card">
-      <div class="card-header"><span class="card-title">Cài đặt thông báo</span></div>
+      <div class="card-header">
+        <span class="card-title">Cài đặt thông báo</span>
+        <button class="btn btn-sm btn-primary" onclick="Settings._saveNotif()">
+          <i class="fa-solid fa-save"></i> Lưu
+        </button>
+      </div>
       <div class="card-body">
-        ${[
-          {label:'Thông báo khi có đơn nghỉ phép mới',on:true},
-          {label:'Thông báo nhắc nhở chấm công',on:true},
-          {label:'Thông báo ngày phát lương',on:true},
-          {label:'Thông báo sinh nhật nhân viên',on:false},
-          {label:'Thông báo hết hạn bảo hành tài sản',on:true},
-          {label:'Thông báo hợp đồng sắp hết hạn',on:true},
-          {label:'Thông báo qua email',on:false},
-        ].map(n=>`
+        ${items.map(n=>{
+          const checked = s[n.id] !== undefined ? s[n.id] : n.def;
+          return `
           <div class="perm-toggle">
             <span>${n.label}</span>
             <label class="switch">
-              <input type="checkbox" ${n.on?'checked':''} onchange="Utils.toast(this.checked?'Đã bật thông báo':'Đã tắt thông báo','info')" />
+              <input type="checkbox" id="sn_${n.id}" ${checked?'checked':''} />
               <span class="slider"></span>
             </label>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>`; },
+
+  _saveNotif() {
+    const keys = ['leave','attend','payroll','birthday','warranty','contract','email'];
+    const d = {};
+    keys.forEach(k => { const el = document.getElementById(`sn_${k}`); if(el) d[k] = el.checked; });
+    SettingsStore.set('notif', d);
+    Utils.toast('Đã lưu cài đặt thông báo!', 'success');
+  },
 
   sectionSecurity() { return `
     <div class="card">
