@@ -11,6 +11,7 @@ const Settings = {
     {id:'salary',   label:'Cấu hình lương',       icon:'fa-coins'},
     {id:'leave',    label:'Chính sách nghỉ phép', icon:'fa-calendar-check'},
     {id:'template', label:'Mẫu nhập liệu',        icon:'fa-file-arrow-up'},
+    {id:'forms',    label:'Tích hợp Google Forms', icon:'fa-brands fa-wpforms'},
     {id:'notif',    label:'Thông báo',             icon:'fa-bell'},
     {id:'security', label:'Bảo mật',               icon:'fa-shield-halved'},
     {id:'backup',   label:'Sao lưu & Khôi phục',  icon:'fa-database'},
@@ -55,6 +56,7 @@ const Settings = {
       case 'salary':   c.innerHTML = this.sectionSalary();   break;
       case 'leave':    c.innerHTML = this.sectionLeave();    break;
       case 'template': c.innerHTML = this.sectionTemplate();  break;
+      case 'forms':    c.innerHTML = this.sectionForms();    break;
       case 'notif':    c.innerHTML = this.sectionNotif();    break;
       case 'security': c.innerHTML = this.sectionSecurity(); break;
       case 'backup':   c.innerHTML = this.sectionBackup();   break;
@@ -521,6 +523,211 @@ const Settings = {
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
     Utils.toast('Đã tải file mẫu CSV!', 'success');
+  },
+
+  sectionForms() {
+    const s = SettingsStore.get('forms_integration');
+    const url   = s.webAppUrl || '';
+    const token = s.token || '';
+    const connected = !!url;
+    return `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-brands fa-google" style="color:#EA4335"></i> Tích hợp Google Forms</span>
+        ${connected ? '<span class="status-badge status-active">Đã kết nối</span>' : '<span class="status-badge status-inactive">Chưa kết nối</span>'}
+      </div>
+      <div class="card-body">
+
+        <!-- Hướng dẫn -->
+        <div style="background:var(--info-light);border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:var(--info);display:flex;gap:10px">
+          <i class="fa-solid fa-circle-info" style="font-size:18px;flex-shrink:0;margin-top:1px"></i>
+          <div>
+            <strong>Cách thiết lập:</strong> Google Form → Google Sheet → Apps Script Web App → HRM Pro.<br/>
+            Xem hướng dẫn chi tiết trong phần bên dưới để tạo Apps Script.
+          </div>
+        </div>
+
+        <!-- Cấu hình kết nối -->
+        <div class="form-group">
+          <label class="form-label">URL Google Apps Script Web App <span style="color:var(--danger)">*</span></label>
+          <input class="form-control" id="sf_url" value="${url}"
+            placeholder="https://script.google.com/macros/s/AKfy.../exec" />
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">URL bạn nhận được sau khi triển khai Apps Script dưới dạng Web App</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Token bảo mật <span style="color:var(--danger)">*</span></label>
+          <div style="display:flex;gap:8px">
+            <input class="form-control" id="sf_token" value="${token}" placeholder="Nhập token bí mật bạn đặt trong Apps Script" />
+            <button class="btn btn-secondary" style="white-space:nowrap" onclick="Settings._genToken()">
+              <i class="fa-solid fa-dice"></i> Tạo ngẫu nhiên
+            </button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Token này phải giống hệt trong Apps Script của bạn</div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:24px">
+          <button class="btn btn-primary" onclick="Settings._saveFormsConfig()">
+            <i class="fa-solid fa-save"></i> Lưu cấu hình
+          </button>
+          ${connected ? `
+          <button class="btn btn-secondary" onclick="Settings._testFormsConn()">
+            <i class="fa-solid fa-plug"></i> Kiểm tra kết nối
+          </button>
+          <button class="btn btn-success" onclick="navigate('intake')">
+            <i class="fa-solid fa-inbox"></i> Xem hồ sơ đang chờ
+          </button>` : ''}
+        </div>
+
+        <hr class="divider" />
+
+        <!-- Hướng dẫn Apps Script -->
+        <div style="font-size:14px;font-weight:700;margin-bottom:14px">
+          <i class="fa-solid fa-book-open" style="color:var(--primary)"></i> Hướng dẫn thiết lập Apps Script
+        </div>
+        ${[
+          ['1', 'Liên kết Google Form với Google Sheet', 'Trong Google Form → <strong>Responses</strong> → icon Google Sheets → tạo spreadsheet mới.'],
+          ['2', 'Mở Apps Script', 'Trong Google Sheet → <strong>Extensions → Apps Script</strong>.'],
+          ['3', 'Dán code', 'Xóa nội dung cũ, dán đoạn code bên dưới vào. Thay <code>YOUR_SECRET_TOKEN</code> bằng token bạn đặt ở trên. Thay <code>FOLDER_ID</code> bằng <code>1myxvUd6Y_G9SJr-EzzfWKl1IL-_Dn3tm</code>.'],
+          ['4', 'Thiết lập Trigger', 'Apps Script → <strong>Triggers</strong> (đồng hồ bên trái) → Add Trigger → chọn hàm <strong>onFormSubmit</strong> → Event source: <strong>From spreadsheet</strong> → Event type: <strong>On form submit</strong>.'],
+          ['5', 'Triển khai Web App', 'Apps Script → <strong>Deploy → New deployment</strong> → Type: <strong>Web app</strong> → Execute as: <strong>Me</strong> → Who has access: <strong>Anyone</strong> → Deploy. Copy URL dán vào ô trên.'],
+        ].map(([n,title,desc]) => `
+          <div style="display:flex;gap:12px;margin-bottom:14px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${n}</div>
+            <div>
+              <div style="font-weight:600;font-size:13px;margin-bottom:2px">${title}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${desc}</div>
+            </div>
+          </div>`).join('')}
+
+        <!-- Code Apps Script -->
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;margin-top:8px">Code dán vào Apps Script:</div>
+        <div style="position:relative">
+          <pre id="gasCode" style="background:#1e1e2e;color:#cdd6f4;border-radius:10px;padding:16px;font-size:11.5px;line-height:1.6;overflow-x:auto;max-height:320px;overflow-y:auto;margin:0">${this._gasCodeHtml()}</pre>
+          <button class="btn btn-sm btn-secondary" style="position:absolute;top:8px;right:8px" onclick="Settings._copyGasCode()">
+            <i class="fa-solid fa-copy"></i> Copy
+          </button>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  _gasCodeHtml() {
+    const token = (SettingsStore.get('forms_integration').token || 'YOUR_SECRET_TOKEN').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    return `// ═══════════════════════════════════════════
+// HRM Pro – Google Forms Integration
+// Dán vào Apps Script của Google Sheet
+// ═══════════════════════════════════════════
+
+const HRM_TOKEN   = '${token}';
+const FOLDER_ID   = '1myxvUd6Y_G9SJr-EzzfWKl1IL-_Dn3tm';
+const STATUS_COL  = '__hrm_status';
+
+function doGet(e) {
+  const p   = e.parameter;
+  if (p.token !== HRM_TOKEN)
+    return resp({ok:false, error:'Unauthorized'});
+
+  if (p.action === 'list')   return resp(listPending());
+  if (p.action === 'accept') return resp(setStatus(+p.row, 'accepted'));
+  if (p.action === 'reject') return resp(setStatus(+p.row, 'rejected'));
+  return resp({ok:true});
+}
+
+function listPending() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  if (sheet.getLastRow() &lt; 2) return {ok:true, data:[]};
+  const all     = sheet.getDataRange().getValues();
+  const headers = all[0];
+  const stIdx   = headers.indexOf(STATUS_COL);
+  const data = [];
+  for (let i = 1; i &lt; all.length; i++) {
+    const row = all[i];
+    const st  = stIdx &gt;= 0 ? row[stIdx] : '';
+    if (st === 'accepted' || st === 'rejected') continue;
+    const obj = {_row: i+1};
+    headers.forEach((h,j) => { if(h !== STATUS_COL) obj[h] = row[j]; });
+    data.push(obj);
+  }
+  return {ok:true, data};
+}
+
+function setStatus(rowNum, status) {
+  const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0];
+  let col = headers.indexOf(STATUS_COL) + 1;
+  if (!col) { col = headers.length + 1; sheet.getRange(1,col).setValue(STATUS_COL); }
+  sheet.getRange(rowNum, col).setValue(status);
+  if (status === 'accepted') saveToDrive(rowNum, headers);
+  return {ok:true};
+}
+
+function saveToDrive(rowNum, headers) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+    const row   = sheet.getRange(rowNum, 1, 1, headers.length).getValues()[0];
+    const data  = {};
+    headers.forEach((h,i) => { if(h !== STATUS_COL) data[h] = row[i]; });
+    const name  = data['Họ và tên'] || data['ho_ten'] || ('HoSo_Row'+rowNum);
+    const date  = new Date().toLocaleDateString('vi-VN').replace(/\\//g,'-');
+    DriveApp.getFolderById(FOLDER_ID)
+      .createFile(name+'_'+date+'.json',
+        JSON.stringify(data, null, 2), 'application/json');
+  } catch(e) { console.log('Drive error', e); }
+}
+
+// Trigger: chạy khi có form submit mới
+function onFormSubmit(e) {
+  const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0];
+  let col = headers.indexOf(STATUS_COL) + 1;
+  if (!col) { col = headers.length + 1; sheet.getRange(1,col).setValue(STATUS_COL); }
+  sheet.getRange(sheet.getLastRow(), col).setValue('pending');
+}
+
+function resp(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+  },
+
+  _copyGasCode() {
+    const pre = document.getElementById('gasCode');
+    if (!pre) return;
+    const text = pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      Utils.toast('Đã copy code Apps Script!', 'success');
+    }).catch(() => {
+      Utils.toast('Copy thủ công: bôi đen đoạn code rồi Ctrl+C', 'info');
+    });
+  },
+
+  _genToken() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const token = Array.from({length: 32}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const el = document.getElementById('sf_token');
+    if (el) { el.value = token; Utils.toast('Đã tạo token ngẫu nhiên – nhớ cập nhật trong Apps Script!', 'warning'); }
+  },
+
+  _saveFormsConfig() {
+    const url   = (document.getElementById('sf_url')?.value   || '').trim();
+    const token = (document.getElementById('sf_token')?.value || '').trim();
+    if (!url)   { Utils.toast('Vui lòng nhập URL Web App', 'error'); return; }
+    if (!token) { Utils.toast('Vui lòng nhập token bảo mật', 'error'); return; }
+    SettingsStore.set('forms_integration', { webAppUrl: url, token });
+    Utils.toast('Đã lưu cấu hình kết nối Google Forms!', 'success');
+    Settings.switchSection('forms');
+  },
+
+  _testFormsConn() {
+    const cfg = SettingsStore.get('forms_integration');
+    if (!cfg.webAppUrl) return;
+    Utils.toast('Đang kiểm tra kết nối…', 'info');
+    fetch(`${cfg.webAppUrl}?action=list&token=${encodeURIComponent(cfg.token||'')}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) Utils.toast(`Kết nối thành công! Có ${(d.data||[]).length} hồ sơ đang chờ.`, 'success');
+        else Utils.toast('Lỗi: ' + d.error, 'error');
+      })
+      .catch(e => Utils.toast('Không kết nối được: ' + e.message, 'error'));
   },
 
   sectionNotif() {

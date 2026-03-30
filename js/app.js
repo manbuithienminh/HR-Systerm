@@ -5,6 +5,7 @@
 const pageTitles = {
   dashboard:   'Dashboard',
   employees:   'Quản lý nhân viên',
+  intake:      'Tiếp nhận hồ sơ NLĐ',
   departments: 'Phòng ban',
   recruitment: 'Tuyển dụng',
   attendance:  'Chấm công',
@@ -21,6 +22,7 @@ const pageTitles = {
 const pageRenderers = {
   dashboard:   () => Dashboard.render(),
   employees:   () => Employees.render(),
+  intake:      () => Intake.render(),
   departments: () => Departments.render(),
   recruitment: () => Recruitment.render(),
   attendance:  () => Attendance.render(),
