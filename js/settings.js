@@ -543,6 +543,7 @@ const Settings = {
     const url   = s.webAppUrl || '';
     const token = s.token || '';
     const connected = !!url;
+    const connCode = connected ? btoa(JSON.stringify({u: url, t: token})) : '';
     return `
     <div class="card">
       <div class="card-header">
@@ -556,9 +557,43 @@ const Settings = {
           <i class="fa-solid fa-circle-info" style="font-size:18px;flex-shrink:0;margin-top:1px"></i>
           <div>
             <strong>Toàn bộ dữ liệu</strong> (nhân viên, phòng ban, tài sản...) tự động lưu vào Google Drive mỗi khi có thay đổi.<br/>
-            Khi dùng trình duyệt/thiết bị mới, bấm <strong>"Tải từ Drive"</strong> để khôi phục.
+            Kết nối được duy trì vĩnh viễn. Chỉ mất khi bạn bấm <strong>"Ngắt kết nối"</strong>.
+            Khi đổi trình duyệt, dùng <strong>Mã kết nối</strong> để khôi phục tức thì.
           </div>
         </div>
+
+        ${connected ? `
+        <!-- MÃ KẾT NỐI – hiện khi đã kết nối -->
+        <div style="background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border:1.5px solid var(--success);border-radius:12px;padding:16px 18px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <i class="fa-solid fa-key" style="color:var(--success)"></i>
+            <span style="font-weight:700;font-size:13px;color:var(--success)">Mã kết nối của bạn</span>
+            <span style="font-size:11px;color:var(--text-muted);margin-left:4px">— Lưu lại để dùng trên trình duyệt khác</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="sf_conncode" class="form-control" style="font-family:monospace;font-size:11px;background:#fff;color:var(--text-dark)" readonly value="${connCode}" onclick="this.select()" />
+            <button class="btn btn-success" style="white-space:nowrap" onclick="Settings._copyConnCode()">
+              <i class="fa-solid fa-copy"></i> Sao chép
+            </button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+            <i class="fa-solid fa-shield-halved"></i> Mã này chứa URL và token của bạn. Bảo mật như mật khẩu.
+          </div>
+        </div>` : `
+        <!-- KHÔI PHỤC KẾT NỐI – hiện khi chưa kết nối -->
+        <div style="background:linear-gradient(135deg,#fff8e1,#fffde7);border:1.5px solid var(--warning);border-radius:12px;padding:16px 18px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <i class="fa-solid fa-rotate-left" style="color:var(--warning)"></i>
+            <span style="font-weight:700;font-size:13px;color:var(--warning)">Khôi phục kết nối nhanh</span>
+            <span style="font-size:11px;color:var(--text-muted);margin-left:4px">— Đã có mã kết nối? Dán vào đây</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <input id="sf_restore" class="form-control" style="font-family:monospace;font-size:11px" placeholder="Dán mã kết nối vào đây…" />
+            <button class="btn btn-warning" style="white-space:nowrap;color:#fff" onclick="Settings._restoreConn()">
+              <i class="fa-solid fa-bolt"></i> Kết nối ngay
+            </button>
+          </div>
+        </div>`}
 
         <!-- Cấu hình kết nối -->
         <div class="form-group">
@@ -577,9 +612,9 @@ const Settings = {
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Token này phải giống hệt trong Apps Script của bạn</div>
         </div>
-        <div style="display:flex;gap:10px;margin-bottom:24px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
           <button class="btn btn-primary" onclick="Settings._saveFormsConfig()">
-            <i class="fa-solid fa-save"></i> Lưu cấu hình
+            <i class="fa-solid fa-save"></i> ${connected ? 'Cập nhật cấu hình' : 'Lưu & Kết nối'}
           </button>
           ${connected ? `
           <button class="btn btn-secondary" onclick="Settings._testFormsConn()">
@@ -590,6 +625,9 @@ const Settings = {
           </button>
           <button class="btn btn-secondary" onclick="Settings._loadFromDrive()">
             <i class="fa-solid fa-cloud-arrow-down"></i> Tải dữ liệu từ Drive
+          </button>
+          <button class="btn btn-danger" onclick="Settings._disconnect()">
+            <i class="fa-solid fa-plug-circle-xmark"></i> Ngắt kết nối
           </button>` : ''}
         </div>
 
@@ -807,8 +845,41 @@ function resp(data) {
     if (!url)   { Utils.toast('Vui lòng nhập URL Web App', 'error'); return; }
     if (!token) { Utils.toast('Vui lòng nhập token bảo mật', 'error'); return; }
     SettingsStore.set('forms_integration', { webAppUrl: url, token });
-    Utils.toast('Đã lưu cấu hình kết nối Google Forms!', 'success');
+    Utils.toast('Đã kết nối! Hãy sao chép <strong>Mã kết nối</strong> để dùng trên trình duyệt khác.', 'success');
     Settings.switchSection('forms');
+  },
+
+  _copyConnCode() {
+    const el = document.getElementById('sf_conncode');
+    if (!el || !el.value) return;
+    navigator.clipboard.writeText(el.value).then(() => {
+      Utils.toast('Đã sao chép mã kết nối! Lưu lại để dùng trên trình duyệt khác.', 'success');
+    }).catch(() => {
+      el.select(); document.execCommand('copy');
+      Utils.toast('Đã sao chép mã kết nối!', 'success');
+    });
+  },
+
+  _restoreConn() {
+    const code = (document.getElementById('sf_restore')?.value || '').trim();
+    if (!code) { Utils.toast('Vui lòng dán mã kết nối vào ô trên', 'error'); return; }
+    try {
+      const obj = JSON.parse(atob(code));
+      if (!obj.u || !obj.t) throw new Error('invalid');
+      SettingsStore.set('forms_integration', { webAppUrl: obj.u, token: obj.t });
+      Utils.toast('Đã khôi phục kết nối thành công!', 'success');
+      Settings.switchSection('forms');
+    } catch(e) {
+      Utils.toast('Mã kết nối không hợp lệ. Vui lòng kiểm tra lại.', 'error');
+    }
+  },
+
+  _disconnect() {
+    Utils.confirm('Ngắt kết nối Google Drive/Forms? Dữ liệu trên Drive không bị xóa, bạn có thể kết nối lại bằng mã kết nối.', () => {
+      SettingsStore.set('forms_integration', {});
+      Utils.toast('Đã ngắt kết nối.', 'info');
+      Settings.switchSection('forms');
+    });
   },
 
   _loadFromDrive() {

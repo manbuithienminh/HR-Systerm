@@ -98,6 +98,25 @@ document.getElementById('globalSearch').addEventListener('input', Utils.debounce
   }
 }, 400));
 
+/* ── Auto-restore connection from URL hash ── */
+(function() {
+  try {
+    const hash = window.location.hash; // e.g. #conn=eyJ1Ijoi...
+    const m = hash.match(/[#&]conn=([A-Za-z0-9+/=]+)/);
+    if (m) {
+      const obj = JSON.parse(atob(m[1]));
+      if (obj.u && obj.t) {
+        const cur = SettingsStore.get('forms_integration');
+        if (!cur.webAppUrl) { // only restore if not already connected
+          SettingsStore.set('forms_integration', { webAppUrl: obj.u, token: obj.t });
+        }
+      }
+      // Clean hash from URL without reload
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  } catch(e) { /* invalid hash, ignore */ }
+})();
+
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
   DB.loadAll();
