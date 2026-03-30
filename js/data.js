@@ -31,9 +31,12 @@ const DB = {
   /* ── RECRUITMENT ── */
   recruitment: [],
 
+  /* ── DOCUMENT TEMPLATES ── */
+  docTemplates: [],
+
   /* ── PERSISTENCE ── */
   _dbKey: 'hrm_db',
-  _tables: ['employees','departments','attendance','leaves','payroll','documents','assets','roles','recruitment'],
+  _tables: ['employees','departments','attendance','leaves','payroll','documents','assets','roles','recruitment','docTemplates'],
 
   /* Lưu 1 bảng vào localStorage + đồng bộ Drive */
   save(table) {
