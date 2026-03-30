@@ -866,6 +866,40 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ══════════════════════════════════════════
+   DOCUMENT EDITOR
+══════════════════════════════════════════ */
+.doc-editor-wrap { display:flex; flex-direction:column; height:calc(100vh - var(--topbar-h)); margin:-24px; overflow:hidden; }
+.doc-editor-topbar { display:flex; align-items:center; gap:12px; padding:10px 20px; background:var(--bg-card); border-bottom:1px solid var(--border); flex-shrink:0; }
+.doc-editor-topbar .doc-title-input { flex:1; border:none; background:transparent; font-size:16px; font-weight:700; color:var(--text-dark); outline:none; padding:4px 8px; border-radius:6px; }
+.doc-editor-topbar .doc-title-input:focus { background:var(--bg); }
+.doc-editor-body { display:flex; flex:1; overflow:hidden; }
+.doc-meta-panel { width:300px; flex-shrink:0; border-right:1px solid var(--border); background:var(--bg); overflow-y:auto; padding:20px 16px; }
+.doc-meta-panel .form-label { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+.doc-meta-panel .form-input { font-size:13px; padding:8px 10px; }
+.doc-canvas-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; background:#e8eaed; }
+.doc-toolbar { display:flex; flex-wrap:wrap; gap:2px; padding:6px 12px; background:var(--bg-card); border-bottom:1px solid var(--border); flex-shrink:0; align-items:center; }
+.doc-toolbar-btn { width:30px; height:28px; border:none; background:transparent; border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--text-base); transition:background .15s; }
+.doc-toolbar-btn:hover { background:var(--bg); }
+.doc-toolbar-btn.active { background:var(--primary-light); color:var(--primary); }
+.doc-toolbar-sep { width:1px; height:22px; background:var(--border); margin:0 4px; flex-shrink:0; }
+.doc-toolbar select { height:28px; border:1px solid var(--border); border-radius:4px; background:var(--bg-card); font-size:12px; color:var(--text-base); padding:0 4px; cursor:pointer; }
+.doc-toolbar select:focus { outline:none; border-color:var(--primary); }
+.doc-toolbar input[type=color] { width:26px; height:26px; padding:1px; border:1px solid var(--border); border-radius:4px; cursor:pointer; background:none; }
+.doc-paper-scroll { flex:1; overflow-y:auto; padding:32px 24px; }
+.doc-paper { background:#fff; width:794px; min-height:1123px; margin:0 auto; padding:72px 80px; box-shadow:0 2px 12px rgba(0,0,0,.15); border-radius:2px; outline:none; font-size:13pt; line-height:1.6; color:#222; font-family:'Times New Roman',serif; }
+.doc-paper:focus { box-shadow:0 2px 16px rgba(0,0,0,.22); }
+.doc-paper h1 { font-size:20pt; font-weight:700; margin:16px 0 8px; }
+.doc-paper h2 { font-size:16pt; font-weight:700; margin:14px 0 6px; }
+.doc-paper h3 { font-size:13pt; font-weight:700; margin:12px 0 4px; }
+.doc-paper ul, .doc-paper ol { padding-left:28px; margin:8px 0; }
+.doc-paper table { border-collapse:collapse; width:100%; margin:10px 0; }
+.doc-paper table td, .doc-paper table th { border:1px solid #999; padding:6px 10px; min-width:60px; }
+.doc-paper table th { background:#f0f0f0; font-weight:700; }
+.doc-paper a { color:var(--primary); text-decoration:underline; }
+@media (max-width: 900px) { .doc-paper { width:100%; padding:40px 24px; } .doc-meta-panel { width:260px; } }
+@media (max-width: 700px) { .doc-editor-body { flex-direction:column; } .doc-meta-panel { width:100%; height:auto; max-height:40vh; border-right:none; border-bottom:1px solid var(--border); } }
+
+/* ══════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════ */
 @media (max-width: 1024px) {
