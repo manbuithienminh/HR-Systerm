@@ -30,6 +30,25 @@ const DB = {
 
   /* ── RECRUITMENT ── */
   recruitment: [],
+
+  /* ── PERSISTENCE ── */
+  _dbKey: 'hrm_db',
+  _tables: ['employees','departments','attendance','leaves','payroll','documents','assets','roles','recruitment'],
+
+  save(table) {
+    try {
+      const all = JSON.parse(localStorage.getItem(this._dbKey) || '{}');
+      all[table] = this[table];
+      localStorage.setItem(this._dbKey, JSON.stringify(all));
+    } catch(e) { console.warn('DB.save error', e); }
+  },
+
+  loadAll() {
+    try {
+      const all = JSON.parse(localStorage.getItem(this._dbKey) || '{}');
+      this._tables.forEach(t => { if (Array.isArray(all[t])) this[t] = all[t]; });
+    } catch(e) { console.warn('DB.loadAll error', e); }
+  },
 };
 
 /* ══════════════════════════════════════════

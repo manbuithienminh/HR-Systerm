@@ -301,8 +301,9 @@ const Intake = {
     const autoMap = this._autoMap(headers);
     const emp = this._buildEmployee(sub, headers, autoMap);
 
-    // Thêm vào DB
+    // Thêm vào DB và lưu localStorage
     DB.employees.push(emp);
+    DB.save('employees');
 
     // Gọi Apps Script để đánh dấu đã tiếp nhận
     this._callApi({ action: 'accept', row });

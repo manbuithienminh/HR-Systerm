@@ -368,10 +368,11 @@ const Employees = {
       DB.employees[idx] = { ...DB.employees[idx], ...data };
       Utils.toast('Cập nhật nhân viên thành công!', 'success');
     } else {
-      data.id = Math.max(...DB.employees.map(e=>e.id)) + 1;
+      data.id = (DB.employees.length ? Math.max(...DB.employees.map(e=>e.id)) : 0) + 1;
       DB.employees.push(data);
       Utils.toast('Thêm nhân viên thành công!', 'success');
     }
+    DB.save('employees');
     Utils.closeModal();
     this.render();
   },
@@ -380,6 +381,7 @@ const Employees = {
     const e = DB.getEmp(id);
     Utils.confirm(`Bạn có chắc muốn xóa nhân viên <strong>${e.name}</strong>?`, () => {
       DB.employees = DB.employees.filter(e=>e.id!==id);
+      DB.save('employees');
       Utils.toast('Đã xóa nhân viên', 'success');
       this.render();
     });

@@ -100,6 +100,7 @@ document.getElementById('globalSearch').addEventListener('input', Utils.debounce
 
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
+  DB.loadAll();
   Settings.syncSidebar();
   navigate('dashboard');
 });
