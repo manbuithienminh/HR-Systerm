@@ -218,24 +218,10 @@ const Dashboard = {
   },
 
   renderTimeline() {
-    const events = [
-      { icon:'fa-user-plus',   color:'gradient-green',  title:'Lê Xuân Việt ký hợp đồng thử việc',  sub:'Phòng Kế toán',  time:'1 giờ trước' },
-      { icon:'fa-calendar-check',color:'gradient-blue', title:'Duyệt đơn nghỉ phép – Nguyễn Thị Lan', sub:'2 ngày, 25–26/3', time:'2 giờ trước' },
-      { icon:'fa-money-bill',  color:'gradient-purple', title:'Phát lương tháng 2/2024 thành công',  sub:'18 nhân viên',   time:'3 ngày trước' },
-      { icon:'fa-laptop',      color:'gradient-orange', title:'Bàn giao MacBook Pro – Trần Thị Bích', sub:'Thiết bị TS002', time:'3 ngày trước' },
-      { icon:'fa-file-lines',  color:'gradient-teal',   title:'Tạo văn bản VB009 – Đề xuất tăng lương', sub:'Phòng Kỹ thuật', time:'4 ngày trước' },
-    ];
-    return `<div class="timeline">${events.map(e => `
-      <div class="timeline-item">
-        <div class="timeline-dot ${e.color}" style="color:#fff;font-size:14px">
-          <i class="fa-solid ${e.icon}"></i>
-        </div>
-        <div class="timeline-content">
-          <div class="timeline-title">${e.title}</div>
-          <div class="timeline-sub">${e.sub}</div>
-          <div class="timeline-time"><i class="fa-regular fa-clock"></i> ${e.time}</div>
-        </div>
-      </div>`).join('')}</div>`;
+    return `<div style="text-align:center;padding:24px 0;color:var(--text-muted);font-size:13px">
+      <i class="fa-solid fa-clock" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>
+      Chưa có hoạt động nào
+    </div>`;
   },
 
   initCharts() {
