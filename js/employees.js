@@ -118,7 +118,9 @@ const Employees = {
       <tr>
         <td>
           <div class="emp-cell">
-            <div class="emp-avatar-sm ${e.color}">${e.avatar}</div>
+            ${e.photo
+              ? `<img src="${e.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0"/>`
+              : `<div class="emp-avatar-sm ${e.color}">${e.avatar}</div>`}
             <div>
               <div class="emp-name">${e.name}</div>
               <div class="emp-email">${e.email}</div>
@@ -192,7 +194,9 @@ const Employees = {
 
     Utils.openModal(`Hồ sơ nhân viên – ${e.name}`, `
       <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap">
-        <div class="user-avatar ${e.color}" style="width:72px;height:72px;font-size:24px;flex-shrink:0">${e.avatar}</div>
+        ${e.photo
+          ? `<img src="${e.photo}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;flex-shrink:0"/>`
+          : `<div class="user-avatar ${e.color}" style="width:72px;height:72px;font-size:24px;flex-shrink:0">${e.avatar}</div>`}
         <div style="flex:1">
           <h2 style="font-size:18px;font-weight:800;color:var(--text-dark)">${e.name}</h2>
           <p style="color:var(--text-muted);font-size:13px">${e.pos} • ${dept?.name||'—'}</p>
@@ -248,16 +252,34 @@ const Employees = {
   openEdit(id) { this._openForm(DB.getEmp(id)); },
 
   _openForm(e) {
-    const isEdit = !!e;
+    const isEdit  = !!e;
+    const initCode = isEdit ? (e.code||'') : this._genCode(e?.join || '');
     Utils.openModal(isEdit ? `Chỉnh sửa – ${e.name}` : 'Thêm nhân viên mới', `
+
+      <!-- Ảnh đại diện -->
+      <div style="text-align:center;margin-bottom:20px">
+        <div id="fPhotoWrap" onclick="document.getElementById('fPhotoInput').click()"
+          style="width:88px;height:88px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;cursor:pointer;overflow:hidden;position:relative;background:var(--primary);flex-shrink:0">
+          ${e?.photo
+            ? `<img id="fPhotoImg" src="${e.photo}" style="width:100%;height:100%;object-fit:cover"/>`
+            : `<span id="fPhotoInitials">${e?.avatar||'?'}</span>`}
+          <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.45);height:26px;display:flex;align-items:center;justify-content:center">
+            <i class="fa-solid fa-camera" style="font-size:12px;color:#fff"></i>
+          </div>
+        </div>
+        <input type="file" id="fPhotoInput" accept="image/*" style="display:none"
+          onchange="Employees._previewPhoto(this)" />
+        <div style="font-size:11px;color:var(--text-muted)">Click để chọn ảnh</div>
+      </div>
+
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Họ và tên <span style="color:var(--danger)">*</span></label>
           <input class="form-control" id="fName" value="${e?.name||''}" placeholder="Nhập họ tên..." />
         </div>
         <div class="form-group">
-          <label class="form-label">Mã nhân viên</label>
-          <input class="form-control" id="fCode" value="${e?.code||this._nextCode()}" placeholder="NV0XX" />
+          <label class="form-label">Mã nhân viên <span style="font-size:10px;color:var(--text-muted)">(tự động theo ngày vào làm)</span></label>
+          <input class="form-control" id="fCode" value="${initCode}" placeholder="YYMMDDXXXX" style="font-family:monospace" />
         </div>
       </div>
       <div class="form-row">
@@ -289,7 +311,8 @@ const Employees = {
         </div>
         <div class="form-group">
           <label class="form-label">Ngày vào làm</label>
-          <input class="form-control" id="fJoin" type="date" value="${e?.join||''}" />
+          <input class="form-control" id="fJoin" type="date" value="${e?.join||''}"
+            ${!isEdit ? 'oninput="Employees._onJoinChange()"' : ''} />
         </div>
       </div>
       <div class="form-row">
@@ -335,9 +358,51 @@ const Employees = {
     `, true);
   },
 
-  _nextCode() {
-    const max = Math.max(...DB.employees.map(e=>parseInt(e.code.replace('NV',''))));
-    return 'NV' + String(max+1).padStart(3,'0');
+  /* Tạo mã YYMMDDXXXX duy nhất theo ngày vào làm */
+  _genCode(joinDate) {
+    const d = joinDate ? new Date(joinDate) : new Date();
+    const yy = String(d.getFullYear()).slice(2);
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const prefix = yy + mm + dd;
+    // Lấy các số 4 chữ số đã dùng cùng prefix
+    const used = DB.employees
+      .filter(e => e.code && e.code.startsWith(prefix))
+      .map(e => parseInt(e.code.slice(6)));
+    // Tạo số ngẫu nhiên không trùng
+    let rand, tries = 0;
+    do { rand = Math.floor(1000 + Math.random() * 9000); tries++; }
+    while (used.includes(rand) && tries < 500);
+    return prefix + rand;
+  },
+
+  /* Cập nhật mã khi ngày vào làm thay đổi (chỉ cho form thêm mới) */
+  _onJoinChange() {
+    const join = document.getElementById('fJoin')?.value;
+    const codeEl = document.getElementById('fCode');
+    if (codeEl) codeEl.value = this._genCode(join);
+  },
+
+  /* Preview ảnh sau khi chọn file */
+  _previewPhoto(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const wrap = document.getElementById('fPhotoWrap');
+      if (!wrap) return;
+      // Xóa nội dung cũ, chèn ảnh
+      const cam = wrap.querySelector('div'); // camera overlay
+      wrap.innerHTML = '';
+      const img = document.createElement('img');
+      img.id = 'fPhotoImg';
+      img.src = ev.target.result;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+      img.dataset.base64 = ev.target.result;
+      wrap.appendChild(img);
+      wrap.appendChild(cam);
+    };
+    reader.readAsDataURL(file);
   },
 
   _saveForm(id) {
@@ -345,6 +410,8 @@ const Employees = {
     const email= document.getElementById('fEmail').value.trim();
     if (!name || !email) { Utils.toast('Vui lòng nhập đầy đủ họ tên và email', 'warning'); return; }
 
+    const photoImg = document.getElementById('fPhotoImg');
+    const photo    = photoImg?.dataset?.base64 || photoImg?.src?.startsWith('data:') && photoImg.src || '';
     const data = {
       name,
       code:     document.getElementById('fCode').value.trim(),
@@ -359,6 +426,7 @@ const Employees = {
       gender:   document.getElementById('fGender').value,
       status:   document.getElementById('fStatus').value,
       address:  document.getElementById('fAddr').value.trim(),
+      photo:    photo || undefined,
       avatar:   name.split(' ').slice(-2).map(w=>w[0]).join('').toUpperCase(),
       color:    Utils.pickColor(DB.employees.length),
     };
