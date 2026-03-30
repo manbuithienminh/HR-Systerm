@@ -178,7 +178,20 @@ const Settings = {
       dob:   document.getElementById('sp_dob')?.value          || '',
     };
     SettingsStore.set('profile', d);
+    Settings.syncSidebar();
     Utils.toast('Đã cập nhật hồ sơ cá nhân!', 'success');
+  },
+
+  syncSidebar() {
+    const p = SettingsStore.get('profile');
+    const name = p.name || 'Quản trị viên';
+    const initials = name.trim().split(' ').filter(Boolean).slice(-2).map(w => w[0].toUpperCase()).join('');
+    const nameEl   = document.getElementById('sidebarName');
+    const avatarEl = document.getElementById('sidebarAvatar');
+    const topbarEl = document.querySelector('.topbar-avatar');
+    if (nameEl)   nameEl.textContent   = name;
+    if (avatarEl) avatarEl.textContent = initials || 'NT';
+    if (topbarEl) topbarEl.textContent = initials || 'NT';
   },
 
   sectionSalary() {

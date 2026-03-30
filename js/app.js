@@ -100,5 +100,6 @@ document.getElementById('globalSearch').addEventListener('input', Utils.debounce
 
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
+  Settings.syncSidebar();
   navigate('dashboard');
 });
