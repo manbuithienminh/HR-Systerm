@@ -35,19 +35,75 @@ const DB = {
   _dbKey: 'hrm_db',
   _tables: ['employees','departments','attendance','leaves','payroll','documents','assets','roles','recruitment'],
 
+  /* Lưu 1 bảng vào localStorage + đồng bộ Drive */
   save(table) {
+    // 1. localStorage (tức thì)
     try {
       const all = JSON.parse(localStorage.getItem(this._dbKey) || '{}');
       all[table] = this[table];
       localStorage.setItem(this._dbKey, JSON.stringify(all));
-    } catch(e) { console.warn('DB.save error', e); }
+    } catch(e) { console.warn('DB.save localStorage error', e); }
+    // 2. Drive (nền, fire-and-forget)
+    this._postToDrive({ action: 'saveTable', table, data: this[table] });
   },
 
+  /* Tải tất cả từ localStorage khi khởi động */
   loadAll() {
     try {
       const all = JSON.parse(localStorage.getItem(this._dbKey) || '{}');
       this._tables.forEach(t => { if (Array.isArray(all[t])) this[t] = all[t]; });
     } catch(e) { console.warn('DB.loadAll error', e); }
+  },
+
+  /* Tải toàn bộ dữ liệu từ Drive (dùng khi đổi thiết bị / trình duyệt) */
+  loadFromDrive(onDone) {
+    const cfg = SettingsStore.get('forms_integration');
+    if (!cfg.webAppUrl) { if (onDone) onDone(false, 'Chưa cấu hình Apps Script'); return; }
+    const url = `${cfg.webAppUrl}?action=getAllTables&token=${encodeURIComponent(cfg.token || '')}`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) throw new Error(data.error || 'Lỗi API');
+        this._tables.forEach(t => { if (Array.isArray(data[t])) this[t] = data[t]; });
+        // Cập nhật cache localStorage
+        const all = {};
+        this._tables.forEach(t => all[t] = this[t]);
+        localStorage.setItem(this._dbKey, JSON.stringify(all));
+        if (onDone) onDone(true);
+      })
+      .catch(e => { if (onDone) onDone(false, e.message); });
+  },
+
+  /* Gửi dữ liệu lên Drive qua hidden form (không bị CORS chặn) */
+  _postToDrive(payload) {
+    const cfg = SettingsStore.get('forms_integration');
+    if (!cfg.webAppUrl || !cfg.token) return;
+    try {
+      // Tạo iframe ẩn để nhận response
+      let iframe = document.getElementById('_hrm_drive_frame');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = iframe.name = '_hrm_drive_frame';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+      }
+      // Tạo form ẩn và submit
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = cfg.webAppUrl;
+      form.target = '_hrm_drive_frame';
+      form.style.display = 'none';
+      const addField = (name, value) => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = name; inp.value = value;
+        form.appendChild(inp);
+      };
+      addField('token', cfg.token);
+      addField('payload', JSON.stringify(payload));
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+    } catch(e) { console.warn('DB._postToDrive error', e); }
   },
 };
 

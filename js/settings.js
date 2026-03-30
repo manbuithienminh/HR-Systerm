@@ -555,8 +555,8 @@ const Settings = {
         <div style="background:var(--info-light);border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:var(--info);display:flex;gap:10px">
           <i class="fa-solid fa-circle-info" style="font-size:18px;flex-shrink:0;margin-top:1px"></i>
           <div>
-            <strong>Cách thiết lập:</strong> Google Form → Google Sheet → Apps Script Web App → HRM Pro.<br/>
-            Xem hướng dẫn chi tiết trong phần bên dưới để tạo Apps Script.
+            <strong>Toàn bộ dữ liệu</strong> (nhân viên, phòng ban, tài sản...) tự động lưu vào Google Drive mỗi khi có thay đổi.<br/>
+            Khi dùng trình duyệt/thiết bị mới, bấm <strong>"Tải từ Drive"</strong> để khôi phục.
           </div>
         </div>
 
@@ -587,6 +587,9 @@ const Settings = {
           </button>
           <button class="btn btn-success" onclick="navigate('intake')">
             <i class="fa-solid fa-inbox"></i> Xem hồ sơ đang chờ
+          </button>
+          <button class="btn btn-secondary" onclick="Settings._loadFromDrive()">
+            <i class="fa-solid fa-cloud-arrow-down"></i> Tải dữ liệu từ Drive
           </button>` : ''}
         </div>
 
@@ -625,75 +628,124 @@ const Settings = {
 
   _gasCodeHtml() {
     const token = (SettingsStore.get('forms_integration').token || 'YOUR_SECRET_TOKEN').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    return `// ═══════════════════════════════════════════
-// HRM Pro – Google Forms Integration
-// Dán vào Apps Script của Google Sheet
-// ═══════════════════════════════════════════
+    return `// ═══════════════════════════════════════════════════
+// HRM Pro – Full Backend (Forms + Database)
+// Xóa code cũ, dán toàn bộ đoạn này vào Apps Script
+// Sau đó Deploy lại (New version)
+// ═══════════════════════════════════════════════════
 
-const HRM_TOKEN   = '${token}';
-const FOLDER_ID   = '1myxvUd6Y_G9SJr-EzzfWKl1IL-_Dn3tm';
-const STATUS_COL  = '__hrm_status';
+const HRM_TOKEN  = '${token}';
+const FOLDER_ID  = '1myxvUd6Y_G9SJr-EzzfWKl1IL-_Dn3tm';
+const STATUS_COL = '__hrm_status';
+const DB_TABLES  = ['employees','departments','attendance','leaves',
+                    'payroll','documents','assets','roles','recruitment'];
 
+// ── GET: đọc dữ liệu ──────────────────────────────
 function doGet(e) {
-  const p   = e.parameter;
-  if (p.token !== HRM_TOKEN)
-    return resp({ok:false, error:'Unauthorized'});
-
-  if (p.action === 'list')   return resp(listPending());
-  if (p.action === 'accept') return resp(setStatus(+p.row, 'accepted'));
-  if (p.action === 'reject') return resp(setStatus(+p.row, 'rejected'));
+  const p = e.parameter;
+  if (p.token !== HRM_TOKEN) return resp({ok:false,error:'Unauthorized'});
+  if (p.action === 'getAllTables') return resp(getAllTables());
+  if (p.action === 'list')        return resp(listPending());
+  if (p.action === 'accept')      return resp(setStatus(+p.row,'accepted'));
+  if (p.action === 'reject')      return resp(setStatus(+p.row,'rejected'));
   return resp({ok:true});
 }
 
+// ── POST: ghi dữ liệu (từ HRM Pro) ───────────────
+function doPost(e) {
+  try {
+    if (e.parameter.token !== HRM_TOKEN)
+      return resp({ok:false,error:'Unauthorized'});
+    const payload = JSON.parse(e.parameter.payload || '{}');
+    if (payload.action === 'saveTable')
+      return resp(saveTable(payload.table, payload.data));
+  } catch(err) { return resp({ok:false,error:err.toString()}); }
+  return resp({ok:true});
+}
+
+// ── Lấy tất cả bảng ──────────────────────────────
+function getAllTables() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const result = {ok:true};
+  DB_TABLES.forEach(t => {
+    const s = ss.getSheetByName('hrm_'+t);
+    if (s &amp;&amp; s.getLastRow() &gt;= 2) {
+      try { result[t] = JSON.parse(s.getRange(2,1).getValue()); }
+      catch { result[t] = []; }
+    } else { result[t] = []; }
+  });
+  return result;
+}
+
+// ── Lưu 1 bảng vào Sheet + Drive ─────────────────
+function saveTable(name, data) {
+  if (!name || !DB_TABLES.includes(name)) return {ok:false,error:'Invalid table'};
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('hrm_'+name);
+  if (!sheet) { sheet = ss.insertSheet('hrm_'+name); sheet.getRange(1,1).setValue('json'); }
+  sheet.getRange(2,1).setValue(JSON.stringify(data));
+  // Backup file JSON vào Drive
+  try {
+    const folder = DriveApp.getFolderById(FOLDER_ID);
+    const fname  = 'hrm_'+name+'.json';
+    const json   = JSON.stringify(data, null, 2);
+    const files  = folder.getFilesByName(fname);
+    if (files.hasNext()) files.next().setContent(json);
+    else folder.createFile(fname, json, 'application/json');
+  } catch(e) { console.log('Drive backup error',e); }
+  return {ok:true};
+}
+
+// ── Danh sách form chờ xử lý ─────────────────────
 function listPending() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  if (sheet.getLastRow() &lt; 2) return {ok:true, data:[]};
-  const all     = sheet.getDataRange().getValues();
+  if (sheet.getLastRow() &lt; 2) return {ok:true,data:[]};
+  const all = sheet.getDataRange().getValues();
   const headers = all[0];
-  const stIdx   = headers.indexOf(STATUS_COL);
+  const stIdx = headers.indexOf(STATUS_COL);
   const data = [];
   for (let i = 1; i &lt; all.length; i++) {
     const row = all[i];
     const st  = stIdx &gt;= 0 ? row[stIdx] : '';
     if (st === 'accepted' || st === 'rejected') continue;
-    const obj = {_row: i+1};
+    const obj = {_row:i+1};
     headers.forEach((h,j) => { if(h !== STATUS_COL) obj[h] = row[j]; });
     data.push(obj);
   }
-  return {ok:true, data};
+  return {ok:true,data};
 }
 
+// ── Cập nhật trạng thái form ──────────────────────
 function setStatus(rowNum, status) {
-  const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
   const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0];
   let col = headers.indexOf(STATUS_COL) + 1;
-  if (!col) { col = headers.length + 1; sheet.getRange(1,col).setValue(STATUS_COL); }
-  sheet.getRange(rowNum, col).setValue(status);
-  if (status === 'accepted') saveToDrive(rowNum, headers);
+  if (!col) { col = headers.length+1; sheet.getRange(1,col).setValue(STATUS_COL); }
+  sheet.getRange(rowNum,col).setValue(status);
+  if (status === 'accepted') saveFormRowToDrive(rowNum, headers);
   return {ok:true};
 }
 
-function saveToDrive(rowNum, headers) {
+function saveFormRowToDrive(rowNum, headers) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-    const row   = sheet.getRange(rowNum, 1, 1, headers.length).getValues()[0];
+    const row   = sheet.getRange(rowNum,1,1,headers.length).getValues()[0];
     const data  = {};
     headers.forEach((h,i) => { if(h !== STATUS_COL) data[h] = row[i]; });
-    const name  = data['Họ và tên'] || data['ho_ten'] || ('HoSo_Row'+rowNum);
-    const date  = new Date().toLocaleDateString('vi-VN').replace(/\\//g,'-');
+    const name = data['Họ và tên'] || ('HoSo_'+rowNum);
+    const date = new Date().toLocaleDateString('vi-VN').replace(/\\//g,'-');
     DriveApp.getFolderById(FOLDER_ID)
-      .createFile(name+'_'+date+'.json',
-        JSON.stringify(data, null, 2), 'application/json');
-  } catch(e) { console.log('Drive error', e); }
+      .createFile(name+'_'+date+'.json', JSON.stringify(data,null,2),'application/json');
+  } catch(e) { console.log('Drive error',e); }
 }
 
-// Trigger: chạy khi có form submit mới
+// ── Trigger form submit ───────────────────────────
 function onFormSubmit(e) {
-  const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
   const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0];
   let col = headers.indexOf(STATUS_COL) + 1;
-  if (!col) { col = headers.length + 1; sheet.getRange(1,col).setValue(STATUS_COL); }
-  sheet.getRange(sheet.getLastRow(), col).setValue('pending');
+  if (!col) { col = headers.length+1; sheet.getRange(1,col).setValue(STATUS_COL); }
+  sheet.getRange(sheet.getLastRow(),col).setValue('pending');
 }
 
 function resp(data) {
@@ -728,6 +780,19 @@ function resp(data) {
     SettingsStore.set('forms_integration', { webAppUrl: url, token });
     Utils.toast('Đã lưu cấu hình kết nối Google Forms!', 'success');
     Settings.switchSection('forms');
+  },
+
+  _loadFromDrive() {
+    Utils.toast('Đang tải dữ liệu từ Google Drive…', 'info');
+    DB.loadFromDrive((ok, err) => {
+      if (ok) {
+        Utils.toast('Tải thành công! Dữ liệu đã được khôi phục từ Drive.', 'success');
+        // Refresh trang hiện tại
+        navigate(currentPage);
+      } else {
+        Utils.toast('Không tải được: ' + (err || 'Lỗi không xác định'), 'error');
+      }
+    });
   },
 
   _testFormsConn() {
